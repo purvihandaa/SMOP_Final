@@ -1,0 +1,767 @@
+// ============================================================================
+// SMOP - Speedage Manufacturing Operations Platform
+// Prisma Schema for PostgreSQL
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  ADMINISTRATOR
+  PURCHASE_HANDLER
+  STORES_HANDLER
+  MANUFACTURING_SUPERVISOR
+  MANUFACTURING_WORKER
+  SALES_HANDLER
+  MANAGEMENT
+}
+
+enum EnquiryStatus {
+  DRAFT
+  SENT
+  RESPONDED
+  CLOSED
+}
+
+enum QuotationStatus {
+  RECEIVED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum PurchaseOrderStatus {
+  DRAFT
+  PENDING_APPROVAL
+  APPROVED
+  SENT_TO_SUPPLIER
+  PARTIALLY_DELIVERED
+  DELIVERED
+  CLOSED
+  CANCELLED
+}
+
+enum ReceiptStatus {
+  PENDING_INSPECTION
+  INSPECTED
+}
+
+enum InspectionResult {
+  ACCEPTED
+  REJECTED
+  PARTIALLY_ACCEPTED
+}
+
+enum InventoryType {
+  RAW
+  SEMI_FINISHED
+  FINISHED
+}
+
+enum InventoryTransactionType {
+  RECEIPT
+  ISSUE
+  ADJUSTMENT
+  TRANSFER
+  RESERVATION
+  RELEASE
+}
+
+enum ProductionOrderStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum CustomerEnquiryStatus {
+  NEW
+  IN_PROGRESS
+  QUOTED
+  CLOSED
+}
+
+enum CustomerQuotationStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+}
+
+enum CustomerOrderStatus {
+  CONFIRMED
+  IN_PRODUCTION
+  READY_TO_DISPATCH
+  DISPATCHED
+  DELIVERED
+  CANCELLED
+}
+
+enum BOMStatus {
+  DRAFT
+  ACTIVE
+  DEPRECATED
+}
+
+enum AlertSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+// ============================================================================
+// USER & AUTH
+// ============================================================================
+
+model User {
+  id        String   @id @default(cuid())
+  username  String   @unique
+  email     String   @unique
+  password  String
+  fullName  String   @map("full_name")
+  role      UserRole
+  isActive  Boolean  @default(true) @map("is_active")
+  lastLogin DateTime? @map("last_login")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  auditLogs           AuditLog[]
+  supplierEnquiries   SupplierEnquiry[]
+  supplierQuotations  SupplierQuotation[]
+  purchaseOrders      PurchaseOrder[]
+  materialReceipts    MaterialReceipt[]
+  materialInspections MaterialInspection[]
+  inventoryTransactions InventoryTransaction[]
+  productionOrders    ProductionOrder[]
+  customerEnquiries   CustomerEnquiry[]
+  customerQuotations  CustomerQuotation[]
+  customerOrders      CustomerOrder[]
+  scenarioRuns        ScenarioRun[]
+
+  @@index([role])
+  @@index([username])
+  @@map("users")
+}
+
+// ============================================================================
+// SUPPLIERS
+// ============================================================================
+
+model Supplier {
+  id            String   @id @default(cuid())
+  name          String
+  contactPerson String?  @map("contact_person")
+  email         String?
+  phone         String?
+  address       String?
+  gstNumber     String?  @map("gst_number")
+  rating        Float?   @default(0)
+  isActive      Boolean  @default(true) @map("is_active")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  enquiries      SupplierEnquiry[]
+  quotations     SupplierQuotation[]
+  purchaseOrders PurchaseOrder[]
+  materialBatches MaterialBatch[]
+
+  @@index([name])
+  @@map("suppliers")
+}
+
+model SupplierEnquiry {
+  id          String        @id @default(cuid())
+  enquiryNo   String        @unique @map("enquiry_no")
+  supplierId  String        @map("supplier_id")
+  status      EnquiryStatus @default(DRAFT)
+  remarks     String?
+  sentDate    DateTime?     @map("sent_date")
+  responseDate DateTime?    @map("response_date")
+  createdById String        @map("created_by_id")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  supplier    Supplier              @relation(fields: [supplierId], references: [id])
+  createdBy   User                  @relation(fields: [createdById], references: [id])
+  items       SupplierEnquiryItem[]
+  quotations  SupplierQuotation[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("supplier_enquiries")
+}
+
+model SupplierEnquiryItem {
+  id          String @id @default(cuid())
+  enquiryId   String @map("enquiry_id")
+  materialId  String @map("material_id")
+  quantity    Float
+  unit        String @default("pcs")
+  remarks     String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  enquiry     SupplierEnquiry @relation(fields: [enquiryId], references: [id], onDelete: Cascade)
+  material    Material        @relation(fields: [materialId], references: [id])
+
+  @@map("supplier_enquiry_items")
+}
+
+model SupplierQuotation {
+  id            String          @id @default(cuid())
+  quotationNo   String          @unique @map("quotation_no")
+  supplierId    String          @map("supplier_id")
+  enquiryId     String?         @map("enquiry_id")
+  status        QuotationStatus @default(RECEIVED)
+  totalAmount   Float           @default(0) @map("total_amount")
+  validUntil    DateTime?       @map("valid_until")
+  leadTimeDays  Int?            @map("lead_time_days")
+  remarks       String?
+  createdById   String          @map("created_by_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  // Relations
+  supplier      Supplier                @relation(fields: [supplierId], references: [id])
+  enquiry       SupplierEnquiry?        @relation(fields: [enquiryId], references: [id])
+  createdBy     User                    @relation(fields: [createdById], references: [id])
+  items         SupplierQuotationItem[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@map("supplier_quotations")
+}
+
+model SupplierQuotationItem {
+  id           String @id @default(cuid())
+  quotationId  String @map("quotation_id")
+  materialId   String @map("material_id")
+  quantity     Float
+  unitPrice    Float  @map("unit_price")
+  unit         String @default("pcs")
+  totalPrice   Float  @map("total_price")
+
+  // Relations
+  quotation    SupplierQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  material     Material          @relation(fields: [materialId], references: [id])
+
+  @@map("supplier_quotation_items")
+}
+
+// ============================================================================
+// MATERIALS & INVENTORY
+// ============================================================================
+
+model Material {
+  id            String        @id @default(cuid())
+  code          String        @unique
+  name          String
+  description   String?
+  unit          String        @default("pcs")
+  type          InventoryType @default(RAW)
+  hsnCode       String?       @map("hsn_code")
+  isActive      Boolean       @default(true) @map("is_active")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  enquiryItems      SupplierEnquiryItem[]
+  quotationItems    SupplierQuotationItem[]
+  purchaseOrderItems PurchaseOrderItem[]
+  materialBatches   MaterialBatch[]
+  inventoryItems    Inventory[]
+  bomItems          BOMItem[]
+  alertThresholds   AlertThreshold[]
+
+  @@index([name])
+  @@index([code])
+  @@index([type])
+  @@map("materials")
+}
+
+model StorageLocation {
+  id          String @id @default(cuid())
+  name        String @unique
+  zone        String?
+  rack        String?
+  bin         String?
+  description String?
+  capacity    Float?
+  isActive    Boolean @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  inventoryItems Inventory[]
+
+  @@index([zone])
+  @@map("storage_locations")
+}
+
+model Inventory {
+  id              String        @id @default(cuid())
+  materialId      String        @map("material_id")
+  locationId      String        @map("location_id")
+  quantity        Float         @default(0)
+  reservedQty     Float         @default(0) @map("reserved_qty")
+  availableQty    Float         @default(0) @map("available_qty")
+  minStockLevel   Float         @default(0) @map("min_stock_level")
+  maxStockLevel   Float         @default(0) @map("max_stock_level")
+  reorderPoint    Float         @default(0) @map("reorder_point")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  material        Material        @relation(fields: [materialId], references: [id])
+  location        StorageLocation @relation(fields: [locationId], references: [id])
+  transactions    InventoryTransaction[]
+
+  @@unique([materialId, locationId])
+  @@index([materialId])
+  @@index([locationId])
+  @@map("inventory")
+}
+
+model InventoryTransaction {
+  id              String                   @id @default(cuid())
+  inventoryId     String                   @map("inventory_id")
+  type            InventoryTransactionType
+  quantity        Float
+  previousQty     Float                    @map("previous_qty")
+  newQty          Float                    @map("new_qty")
+  referenceType   String?                  @map("reference_type")
+  referenceId     String?                  @map("reference_id")
+  remarks         String?
+  performedById   String                   @map("performed_by_id")
+  createdAt       DateTime                 @default(now()) @map("created_at")
+
+  // Relations
+  inventory       Inventory @relation(fields: [inventoryId], references: [id])
+  performedBy     User      @relation(fields: [performedById], references: [id])
+
+  @@index([inventoryId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("inventory_transactions")
+}
+
+model MaterialBatch {
+  id              String    @id @default(cuid())
+  batchNumber     String    @unique @map("batch_number")
+  materialId      String    @map("material_id")
+  supplierId      String?   @map("supplier_id")
+  purchaseOrderId String?   @map("purchase_order_id")
+  quantity        Float
+  receivedQty     Float     @default(0) @map("received_qty")
+  acceptedQty     Float     @default(0) @map("accepted_qty")
+  rejectedQty     Float     @default(0) @map("rejected_qty")
+  manufacturingDate DateTime? @map("manufacturing_date")
+  expiryDate      DateTime? @map("expiry_date")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  material        Material             @relation(fields: [materialId], references: [id])
+  supplier        Supplier?            @relation(fields: [supplierId], references: [id])
+  purchaseOrder   PurchaseOrder?       @relation(fields: [purchaseOrderId], references: [id])
+  receiptItems    MaterialReceiptItem[]
+  inspections     MaterialInspection[]
+
+  @@index([materialId])
+  @@index([batchNumber])
+  @@map("material_batches")
+}
+
+// ============================================================================
+// PURCHASE ORDERS
+// ============================================================================
+
+model PurchaseOrder {
+  id            String              @id @default(cuid())
+  poNumber      String              @unique @map("po_number")
+  supplierId    String              @map("supplier_id")
+  status        PurchaseOrderStatus @default(DRAFT)
+  totalAmount   Float               @default(0) @map("total_amount")
+  expectedDate  DateTime?           @map("expected_date")
+  approvedDate  DateTime?           @map("approved_date")
+  deliveryDate  DateTime?           @map("delivery_date")
+  remarks       String?
+  createdById   String              @map("created_by_id")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  supplier      Supplier            @relation(fields: [supplierId], references: [id])
+  createdBy     User                @relation(fields: [createdById], references: [id])
+  items         PurchaseOrderItem[]
+  materialBatches MaterialBatch[]
+  receipts      MaterialReceipt[]
+
+  @@index([supplierId])
+  @@index([status])
+  @@index([poNumber])
+  @@index([createdAt])
+  @@map("purchase_orders")
+}
+
+model PurchaseOrderItem {
+  id              String @id @default(cuid())
+  purchaseOrderId String @map("purchase_order_id")
+  materialId      String @map("material_id")
+  quantity        Float
+  unitPrice       Float  @map("unit_price")
+  totalPrice      Float  @map("total_price")
+  unit            String @default("pcs")
+  receivedQty     Float  @default(0) @map("received_qty")
+
+  // Relations
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  material        Material      @relation(fields: [materialId], references: [id])
+
+  @@map("purchase_order_items")
+}
+
+// ============================================================================
+// MATERIAL RECEIPT & INSPECTION
+// ============================================================================
+
+model MaterialReceipt {
+  id              String        @id @default(cuid())
+  receiptNo       String        @unique @map("receipt_no")
+  purchaseOrderId String        @map("purchase_order_id")
+  status          ReceiptStatus @default(PENDING_INSPECTION)
+  receivedDate    DateTime      @default(now()) @map("received_date")
+  remarks         String?
+  receivedById    String        @map("received_by_id")
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  purchaseOrder   PurchaseOrder        @relation(fields: [purchaseOrderId], references: [id])
+  receivedBy      User                 @relation(fields: [receivedById], references: [id])
+  items           MaterialReceiptItem[]
+
+  @@index([purchaseOrderId])
+  @@index([status])
+  @@map("material_receipts")
+}
+
+model MaterialReceiptItem {
+  id              String   @id @default(cuid())
+  receiptId       String   @map("receipt_id")
+  batchId         String   @map("batch_id")
+  quantity        Float
+  remarks         String?
+
+  // Relations
+  receipt         MaterialReceipt @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  batch           MaterialBatch   @relation(fields: [batchId], references: [id])
+
+  @@map("material_receipt_items")
+}
+
+model MaterialInspection {
+  id              String           @id @default(cuid())
+  inspectionNo    String           @unique @map("inspection_no")
+  batchId         String           @map("batch_id")
+  result          InspectionResult
+  inspectedQty    Float            @map("inspected_qty")
+  acceptedQty     Float            @default(0) @map("accepted_qty")
+  rejectedQty     Float            @default(0) @map("rejected_qty")
+  remarks         String?
+  inspectedById   String           @map("inspected_by_id")
+  inspectedAt     DateTime         @default(now()) @map("inspected_at")
+  createdAt       DateTime         @default(now()) @map("created_at")
+
+  // Relations
+  batch           MaterialBatch @relation(fields: [batchId], references: [id])
+  inspectedBy     User          @relation(fields: [inspectedById], references: [id])
+
+  @@index([batchId])
+  @@map("material_inspections")
+}
+
+// ============================================================================
+// MANUFACTURING
+// ============================================================================
+
+model ManufacturingProcess {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  steps           Json?
+  estimatedTime   Float?   @map("estimated_time")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  productionOrders ProductionOrder[]
+
+  @@map("manufacturing_processes")
+}
+
+model BOM {
+  id          String    @id @default(cuid())
+  name        String
+  productName String   @map("product_name")
+  version     Int      @default(1)
+  status      BOMStatus @default(DRAFT)
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  items            BOMItem[]
+  productionOrders ProductionOrder[]
+  scenarioRuns     ScenarioRun[]
+
+  @@unique([productName, version])
+  @@index([productName])
+  @@index([status])
+  @@map("boms")
+}
+
+model BOMItem {
+  id          String @id @default(cuid())
+  bomId       String @map("bom_id")
+  materialId  String @map("material_id")
+  quantity    Float
+  unit        String @default("pcs")
+  remarks     String?
+
+  // Relations
+  bom         BOM      @relation(fields: [bomId], references: [id], onDelete: Cascade)
+  material    Material @relation(fields: [materialId], references: [id])
+
+  @@unique([bomId, materialId])
+  @@map("bom_items")
+}
+
+model ProductionOrder {
+  id              String                @id @default(cuid())
+  orderNo         String                @unique @map("order_no")
+  bomId           String                @map("bom_id")
+  processId       String?               @map("process_id")
+  customerOrderId String?               @map("customer_order_id")
+  quantity        Float
+  status          ProductionOrderStatus @default(PLANNED)
+  plannedStart    DateTime?             @map("planned_start")
+  plannedEnd      DateTime?             @map("planned_end")
+  actualStart     DateTime?             @map("actual_start")
+  actualEnd       DateTime?             @map("actual_end")
+  remarks         String?
+  createdById     String                @map("created_by_id")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  updatedAt       DateTime              @updatedAt @map("updated_at")
+
+  // Relations
+  bom             BOM                    @relation(fields: [bomId], references: [id])
+  process         ManufacturingProcess?  @relation(fields: [processId], references: [id])
+  customerOrder   CustomerOrder?         @relation(fields: [customerOrderId], references: [id])
+  createdBy       User                   @relation(fields: [createdById], references: [id])
+
+  @@index([status])
+  @@index([bomId])
+  @@map("production_orders")
+}
+
+model ScenarioRun {
+  id              String   @id @default(cuid())
+  bomId           String   @map("bom_id")
+  requestedQty    Float    @map("requested_qty")
+  feasible        Boolean
+  maxProducible   Float    @map("max_producible")
+  resultData      Json     @map("result_data")
+  createdById     String   @map("created_by_id")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  bom             BOM  @relation(fields: [bomId], references: [id])
+  createdBy       User @relation(fields: [createdById], references: [id])
+
+  @@index([bomId])
+  @@map("scenario_runs")
+}
+
+// ============================================================================
+// SALES & CUSTOMER ORDERS
+// ============================================================================
+
+model CustomerEnquiry {
+  id            String               @id @default(cuid())
+  enquiryNo     String               @unique @map("enquiry_no")
+  customerName  String               @map("customer_name")
+  customerEmail String?              @map("customer_email")
+  customerPhone String?              @map("customer_phone")
+  productName   String               @map("product_name")
+  quantity      Float
+  status        CustomerEnquiryStatus @default(NEW)
+  remarks       String?
+  createdById   String               @map("created_by_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  updatedAt     DateTime             @updatedAt @map("updated_at")
+
+  // Relations
+  createdBy     User                @relation(fields: [createdById], references: [id])
+  quotations    CustomerQuotation[]
+
+  @@index([status])
+  @@index([customerName])
+  @@map("customer_enquiries")
+}
+
+model CustomerQuotation {
+  id            String                  @id @default(cuid())
+  quotationNo   String                  @unique @map("quotation_no")
+  enquiryId     String?                 @map("enquiry_id")
+  customerName  String                  @map("customer_name")
+  productName   String                  @map("product_name")
+  quantity      Float
+  unitPrice     Float                   @map("unit_price")
+  totalAmount   Float                   @map("total_amount")
+  version       Int                     @default(1)
+  status        CustomerQuotationStatus @default(DRAFT)
+  validUntil    DateTime?               @map("valid_until")
+  remarks       String?
+  createdById   String                  @map("created_by_id")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  // Relations
+  enquiry       CustomerEnquiry? @relation(fields: [enquiryId], references: [id])
+  createdBy     User             @relation(fields: [createdById], references: [id])
+  items         CustomerQuotationItem[]
+  orders        CustomerOrder[]
+
+  @@index([status])
+  @@map("customer_quotations")
+}
+
+model CustomerQuotationItem {
+  id            String @id @default(cuid())
+  quotationId   String @map("quotation_id")
+  productName   String @map("product_name")
+  quantity      Float
+  unitPrice     Float  @map("unit_price")
+  totalPrice    Float  @map("total_price")
+
+  // Relations
+  quotation     CustomerQuotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@map("customer_quotation_items")
+}
+
+model CustomerOrder {
+  id              String            @id @default(cuid())
+  orderNo         String            @unique @map("order_no")
+  quotationId     String?           @map("quotation_id")
+  customerName    String            @map("customer_name")
+  customerEmail   String?           @map("customer_email")
+  customerPhone   String?           @map("customer_phone")
+  productName     String            @map("product_name")
+  quantity        Float
+  totalAmount     Float             @map("total_amount")
+  status          CustomerOrderStatus @default(CONFIRMED)
+  confirmedDate   DateTime?         @map("confirmed_date")
+  expectedDelivery DateTime?        @map("expected_delivery")
+  remarks         String?
+  createdById     String            @map("created_by_id")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  // Relations
+  quotation       CustomerQuotation? @relation(fields: [quotationId], references: [id])
+  createdBy       User               @relation(fields: [createdById], references: [id])
+  productionOrders ProductionOrder[]
+
+  @@index([status])
+  @@index([customerName])
+  @@index([orderNo])
+  @@map("customer_orders")
+}
+
+// ============================================================================
+// REPORTING & ALERTS
+// ============================================================================
+
+model ReportSnapshot {
+  id          String   @id @default(cuid())
+  reportType  String   @map("report_type")
+  periodStart DateTime @map("period_start")
+  periodEnd   DateTime @map("period_end")
+  data        Json
+  generatedAt DateTime @default(now()) @map("generated_at")
+
+  @@index([reportType])
+  @@index([periodStart, periodEnd])
+  @@map("report_snapshots")
+}
+
+model AlertThreshold {
+  id          String        @id @default(cuid())
+  materialId  String        @map("material_id")
+  minStock    Float         @map("min_stock")
+  maxStock    Float         @map("max_stock")
+  severity    AlertSeverity @default(MEDIUM)
+  isActive    Boolean       @default(true) @map("is_active")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  // Relations
+  material    Material @relation(fields: [materialId], references: [id])
+
+  @@unique([materialId])
+  @@map("alert_thresholds")
+}
+
+model BufferStockRule {
+  id              String  @id @default(cuid())
+  materialCode    String  @unique @map("material_code")
+  bufferPercentage Float  @map("buffer_percentage")
+  bufferQuantity  Float?  @map("buffer_quantity")
+  isActive        Boolean @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@map("buffer_stock_rules")
+}
+
+// ============================================================================
+// AUDIT
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  actorId     String?  @map("actor_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String?  @map("entity_id")
+  metadata    Json?
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  actor       User? @relation(fields: [actorId], references: [id])
+
+  @@index([actorId])
+  @@index([entityType])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
