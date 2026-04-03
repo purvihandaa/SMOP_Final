@@ -1,0 +1,5 @@
+src/modules/materials/materials.service.ts(37,131): error TS2345: Argument of type 'PurchaseOrderStatus' is not assignable to parameter of type '"APPROVED" | "SENT_TO_SUPPLIER" | "PARTIALLY_DELIVERED"'.
+  Type '"DRAFT"' is not assignable to type '"APPROVED" | "SENT_TO_SUPPLIER" | "PARTIALLY_DELIVERED"'.
+src/utils/auditLogger.ts(23,9): error TS2322: Type 'Record<string, unknown> | undefined' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+  Type 'Record<string, unknown>' is not assignable to type 'NullableJsonNullValueInput | InputJsonValue | undefined'.
+    Type 'Record<string, unknown>' is missing the following properties from type 'readonly (InputJsonValue | null)[]': length, concat, join, slice, and 20 more.

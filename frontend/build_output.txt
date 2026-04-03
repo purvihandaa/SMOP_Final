@@ -1,0 +1,40 @@
+
+> vite_react_shadcn_ts@0.0.0 build
+> vite build
+
+[36mvite v5.4.19 [32mbuilding for production...[36m[39m
+transforming...
+[32m???[39m 7 modules transformed.
+[31mx[39m Build failed in 765ms
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 2 errors:
+C:/Users/Siddharth/OneDrive/Desktop/smop-operations-view/frontend/src/pages/Inventory.tsx:32:81: ERROR: Cannot use "||" with "??" without parentheses
+C:/Users/Siddharth/OneDrive/Desktop/smop-operations-view/frontend/src/pages/Inventory.tsx:74:87: ERROR: Cannot use "||" with "??" without parentheses[31m
+file: [36mC:/Users/Siddharth/OneDrive/Desktop/smop-operations-view/frontend/src/pages/Inventory.tsx:32:81[31m
+[33m
+[33mCannot use "||" with "??" without parentheses[33m
+30 |            const location = item.location as Record<string, unknown> | undefined;
+31 |            const qty = Number(item.quantity ?? 0);
+32 |            const maxQty = Number(item.maxQuantity ?? item.reorderLevel ?? qty * 2 || 1);
+   |                                                                                   ^
+33 |            const pct = Math.round((qty / maxQty) * 100);
+34 |            const barColor = pct < 30 ? "bg-destructive" : pct < 60 ? "bg-warning" : "bg-success";
+System.Management.Automation.RemoteException
+[33mCannot use "||" with "??" without parentheses[33m
+72 |                  const location = item.location as Record<string, unknown> | undefined;
+73 |                  const qty = Number(item.quantity ?? 0);
+74 |                  const maxQty = Number(item.maxQuantity ?? item.reorderLevel ?? qty * 2 || 1);
+   |                                                                                         ^
+75 |                  const pct = Math.round((qty / maxQty) * 100);
+76 |                  const barColor = pct < 30 ? "bg-destructive" : pct < 60 ? "bg-warning" : "bg-success";
+[31m
+    at failureErrorWithLog (C:\Users\Siddharth\OneDrive\Desktop\smop-operations-view\frontend\node_modules\esbuild\lib\main.js:1472:15)
+    at C:\Users\Siddharth\OneDrive\Desktop\smop-operations-view\frontend\node_modules\esbuild\lib\main.js:755:50
+    at responseCallbacks.<computed> (C:\Users\Siddharth\OneDrive\Desktop\smop-operations-view\frontend\node_modules\esbuild\lib\main.js:622:9)
+    at handleIncomingPacket (C:\Users\Siddharth\OneDrive\Desktop\smop-operations-view\frontend\node_modules\esbuild\lib\main.js:677:12)
+    at Socket.readFromStdout (C:\Users\Siddharth\OneDrive\Desktop\smop-operations-view\frontend\node_modules\esbuild\lib\main.js:600:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m
