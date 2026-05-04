@@ -4,7 +4,7 @@ import { useLocation } from "react-router-dom";
 import {
   Factory, LayoutDashboard, FileSearch, FileText, ShoppingCart,
   Package, ClipboardCheck, Boxes, Wrench, BarChart3, ShoppingBag,
-  LogOut, Menu, X
+  LogOut, Menu, X, Sparkles, ScrollText, TrendingUp
 } from "lucide-react";
 import { useState } from "react";
 
@@ -25,7 +25,10 @@ const navItems: NavItem[] = [
   { title: "Inventory", url: "/inventory", icon: Boxes, roles: ["admin", "stores"] },
   { title: "BOM Management", url: "/bom", icon: Wrench, roles: ["admin", "manufacturing"] },
   { title: "Feasibility Analyzer", url: "/feasibility", icon: BarChart3, roles: ["admin", "manufacturing"] },
-  { title: "Orders", url: "/orders", icon: ShoppingBag, roles: ["admin", "sales"] },
+  { title: "Orders", url: "/orders", icon: ShoppingBag, roles: ["admin", "sales", "manufacturing"] },
+  { title: "Reports", url: "/reports", icon: TrendingUp, roles: ["admin"] },
+  { title: "Audit Logs", url: "/audit-logs", icon: ScrollText, roles: ["admin"] },
+  { title: "AI Copilot", url: "/copilot", icon: Sparkles, roles: ["admin"] },
 ];
 
 const roleLabels: Record<UserRole, string> = {

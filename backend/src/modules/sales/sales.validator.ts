@@ -36,6 +36,21 @@ export const confirmOrderSchema = z.object({
   remarks: z.string().optional(),
 });
 
+export const updateOrderStatusSchema = z.object({
+  id: z.string().min(1, 'Order ID is required'),
+  status: z.enum([
+    'CONFIRMED',
+    'IN_PRODUCTION',
+    'READY_TO_DISPATCH',
+    'DISPATCHED',
+    'DELIVERED',
+    'CANCELLED',
+  ]),
+  remarks: z.string().optional(),
+});
+
 export type CustomerEnquiryInput = z.infer<typeof customerEnquirySchema>;
 export type GenerateQuotationInput = z.infer<typeof generateQuotationSchema>;
 export type ConfirmOrderInput = z.infer<typeof confirmOrderSchema>;
+export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
+

@@ -11,8 +11,10 @@ const reportRoles = [
   UserRole.ADMINISTRATOR,
   UserRole.MANAGEMENT,
   UserRole.PURCHASE_HANDLER,
+  UserRole.STORES_HANDLER,
   UserRole.SALES_HANDLER,
   UserRole.MANUFACTURING_SUPERVISOR,
+  UserRole.MANUFACTURING_WORKER,
 ];
 
 router.get('/dashboard', authorize(...reportRoles), (req, res, next) => reportsController.getDashboard(req, res, next));

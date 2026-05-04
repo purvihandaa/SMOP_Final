@@ -1,5 +1,6 @@
+import React from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Route, Routes, useNavigate } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/context/AuthContext";
@@ -15,6 +16,9 @@ import Inventory from "@/pages/Inventory";
 import BOMManagement from "@/pages/BOMManagement";
 import FeasibilityAnalyzer from "@/pages/FeasibilityAnalyzer";
 import OrderConfirmation from "@/pages/OrderConfirmation";
+import Copilot from "@/pages/Copilot";
+import AuditLogs from "@/pages/AuditLogs";
+import Reports from "@/pages/Reports";
 import NotFound from "@/pages/NotFound";
 import { Factory, Loader2 } from "lucide-react";
 
@@ -44,6 +48,16 @@ const LoadingScreen = () => (
 
 const AppRoutes = () => {
   const { isLoggedIn, isLoading } = useAuth();
+  const navigate = useNavigate();
+  const wasLoggedIn = React.useRef(isLoggedIn);
+
+  // On every fresh login (isLoggedIn goes false → true), navigate to dashboard
+  React.useEffect(() => {
+    if (isLoggedIn && !wasLoggedIn.current) {
+      navigate("/", { replace: true });
+    }
+    wasLoggedIn.current = isLoggedIn;
+  }, [isLoggedIn, navigate]);
 
   if (isLoading) return <LoadingScreen />;
   if (!isLoggedIn) return <Login />;
@@ -61,6 +75,9 @@ const AppRoutes = () => {
         <Route path="/bom" element={<BOMManagement />} />
         <Route path="/feasibility" element={<FeasibilityAnalyzer />} />
         <Route path="/orders" element={<OrderConfirmation />} />
+        <Route path="/reports" element={<Reports />} />
+        <Route path="/audit-logs" element={<AuditLogs />} />
+        <Route path="/copilot" element={<Copilot />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>

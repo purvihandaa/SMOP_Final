@@ -64,42 +64,42 @@ const quickLinksConfig: Record<UserRole, { title: string; links: QuickLink[] }> 
 
 // Map backend dashboard data into KPI cards
 function buildKPIs(data: Record<string, unknown> | undefined, role: UserRole): KPI[] {
-  if (!data) return [];
+  if (!data || !data.kpis) return [];
 
-  const d = data as Record<string, number | undefined>;
+  const d = data.kpis as Record<string, number | undefined>;
 
   const allKpis: KPI[] = [
-    { label: "Active POs", value: String(d.activePurchaseOrders ?? d.totalPurchaseOrders ?? 0), icon: ShoppingCart, color: "text-primary" },
+    { label: "Active POs", value: String(d.activePOs ?? 0), icon: ShoppingCart, color: "text-primary" },
     { label: "Pending Inspections", value: String(d.pendingInspections ?? 0), icon: AlertTriangle, color: "text-warning" },
-    { label: "Inventory Items", value: String(d.totalInventoryItems ?? d.totalMaterials ?? 0), icon: Boxes, color: "text-success" },
-    { label: "Open Orders", value: String(d.openOrders ?? d.totalOrders ?? 0), icon: ShoppingBag, color: "text-primary" },
+    { label: "Inventory Items", value: String(d.totalInventoryItems ?? 0), icon: Boxes, color: "text-success" },
+    { label: "Open Orders", value: String(d.openOrders ?? 0), icon: ShoppingBag, color: "text-primary" },
   ];
 
   const roleKpis: Record<UserRole, KPI[]> = {
     admin: allKpis,
     purchase: [
-      { label: "Open Enquiries", value: String(d.openEnquiries ?? d.totalEnquiries ?? 0), icon: FileSearch, color: "text-primary" },
-      { label: "Pending Quotations", value: String(d.pendingQuotations ?? d.totalQuotations ?? 0), icon: Clock, color: "text-warning" },
-      { label: "Active POs", value: String(d.activePurchaseOrders ?? d.totalPurchaseOrders ?? 0), icon: ShoppingCart, color: "text-success" },
-      { label: "Completed POs", value: String(d.completedPurchaseOrders ?? 0), icon: CheckCircle2, color: "text-muted-foreground" },
+      { label: "Total Suppliers", value: String(d.totalSuppliers ?? 0), icon: FileSearch, color: "text-primary" },
+      { label: "Active POs", value: String(d.activePOs ?? 0), icon: ShoppingCart, color: "text-success" },
+      { label: "Low Stock Items", value: String(d.lowStockItems ?? 0), icon: AlertTriangle, color: "text-destructive" },
+      { label: "Inventory Items", value: String(d.totalInventoryItems ?? 0), icon: Boxes, color: "text-muted-foreground" },
     ],
     stores: [
-      { label: "Pending Receipts", value: String(d.pendingReceipts ?? 0), icon: Package, color: "text-warning" },
-      { label: "Awaiting Inspection", value: String(d.pendingInspections ?? 0), icon: ClipboardCheck, color: "text-primary" },
+      { label: "Pending Inspections", value: String(d.pendingInspections ?? 0), icon: ClipboardCheck, color: "text-primary" },
       { label: "Low Stock Items", value: String(d.lowStockItems ?? 0), icon: AlertTriangle, color: "text-destructive" },
-      { label: "Total Materials", value: String(d.totalMaterials ?? d.totalInventoryItems ?? 0), icon: Boxes, color: "text-success" },
+      { label: "Total Materials", value: String(d.totalMaterials ?? 0), icon: Boxes, color: "text-success" },
+      { label: "Inventory Items", value: String(d.totalInventoryItems ?? 0), icon: Package, color: "text-warning" },
     ],
     manufacturing: [
-      { label: "Active BOMs", value: String(d.totalBOMs ?? d.activeBOMs ?? 0), icon: Wrench, color: "text-primary" },
-      { label: "Feasible Products", value: String(d.feasibleProducts ?? 0), icon: CheckCircle2, color: "text-success" },
-      { label: "Material Shortage", value: String(d.materialShortages ?? 0), icon: AlertTriangle, color: "text-destructive" },
-      { label: "Efficiency", value: `${d.efficiency ?? 0}%`, icon: TrendingUp, color: "text-success" },
+      { label: "Total Materials", value: String(d.totalMaterials ?? 0), icon: Wrench, color: "text-primary" },
+      { label: "Inventory Items", value: String(d.totalInventoryItems ?? 0), icon: Boxes, color: "text-success" },
+      { label: "Low Stock Items", value: String(d.lowStockItems ?? 0), icon: AlertTriangle, color: "text-destructive" },
+      { label: "Pending Inspections", value: String(d.pendingInspections ?? 0), icon: ClipboardCheck, color: "text-warning" },
     ],
     sales: [
-      { label: "Open Orders", value: String(d.openOrders ?? d.totalOrders ?? 0), icon: ShoppingBag, color: "text-primary" },
-      { label: "Pending Confirmation", value: String(d.pendingOrders ?? 0), icon: Clock, color: "text-warning" },
+      { label: "Open Orders", value: String(d.openOrders ?? 0), icon: ShoppingBag, color: "text-primary" },
       { label: "Confirmed Orders", value: String(d.confirmedOrders ?? 0), icon: CheckCircle2, color: "text-success" },
-      { label: "Revenue (₹)", value: d.totalRevenue ? `${(Number(d.totalRevenue) / 100000).toFixed(1)}L` : "0", icon: TrendingUp, color: "text-success" },
+      { label: "Active POs", value: String(d.activePOs ?? 0), icon: ShoppingCart, color: "text-warning" },
+      { label: "Inventory Items", value: String(d.totalInventoryItems ?? 0), icon: Boxes, color: "text-muted-foreground" },
     ],
   };
 

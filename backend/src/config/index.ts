@@ -24,4 +24,10 @@ export const config = {
   bcrypt: {
     saltRounds: parseInt(process.env.BCRYPT_SALT_ROUNDS || '12', 10),
   },
+
+  nim: {
+    apiKey: process.env.NVIDIA_API_KEY || '',
+    model: process.env.NIM_MODEL || 'deepseek-ai/deepseek-v4-pro',
+    baseUrl: process.env.NIM_BASE_URL || 'https://integrate.api.nvidia.com/v1',
+  },
 } as const;
