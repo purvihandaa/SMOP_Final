@@ -14,6 +14,7 @@ import manufacturingRoutes from './modules/manufacturing/manufacturing.routes';
 import salesRoutes from './modules/sales/sales.routes';
 import reportsRoutes from './modules/reports/reports.routes';
 import auditRoutes from './modules/audit/audit.routes';
+import copilotRoutes from './modules/copilot/copilot.routes';
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use('/api', manufacturingRoutes);  // Mounts /api/process/*, /api/bom/*, /ap
 app.use('/api', salesRoutes);          // Mounts /api/customer/*, /api/quotation/*, /api/order/*
 app.use('/api/reports', reportsRoutes);
 app.use('/api/audit', auditRoutes);
+app.use('/api/copilot', copilotRoutes);
 
 // ============================================================================
 // 404 HANDLER

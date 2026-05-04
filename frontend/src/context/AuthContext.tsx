@@ -89,6 +89,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Clear client state even if server call fails
     }
     setUser(null);
+    // Reset URL to root so the next login starts at dashboard,
+    // not whatever page the previous user was on
+    window.history.replaceState(null, '', '/');
   }, []);
 
   const isLoggedIn = !!user;

@@ -341,6 +341,12 @@ export const salesApi = {
 
   listOrders: (params?: ListParams) =>
     get<unknown[]>(`/order/list${qs(params as Record<string, string | number | undefined> || {})}`),
+
+  updateOrderStatus: (data: { id: string; status: string; remarks?: string }) =>
+    put('/order/update-status', data),
+
+  getOrderById: (id: string) =>
+    get<unknown>(`/order/${id}`),
 };
 
 // -----------------------------------------------------------------------------
@@ -370,9 +376,19 @@ export const auditApi = {
 };
 
 // -----------------------------------------------------------------------------
+// Copilot (AI Assistant)
+// -----------------------------------------------------------------------------
+
+export const copilotApi = {
+  chat: (messages: Array<{ role: 'user' | 'assistant'; content: string }>) =>
+    post<{ response: string }>('/copilot/chat', { messages }),
+};
+
+// -----------------------------------------------------------------------------
 // Health
 // -----------------------------------------------------------------------------
 
 export const healthApi = {
   check: () => get<{ status: string; timestamp: string; environment: string }>('/health'),
 };
+

@@ -2,9 +2,19 @@ import prisma from '../../config/database';
 import { PaginationParams } from '../../types';
 import { generateSequenceNumber } from '../../utils/sequence';
 import { writeAuditLog } from '../../utils/auditLogger';
-import { AppError } from '../../utils/errors';
+import { AppError, NotFoundError } from '../../utils/errors';
 import { CustomerEnquiryStatus, CustomerQuotationStatus, CustomerOrderStatus, Prisma, BOMStatus } from '@prisma/client';
-import { CustomerEnquiryInput, GenerateQuotationInput, ConfirmOrderInput } from './sales.validator';
+import { CustomerEnquiryInput, GenerateQuotationInput, ConfirmOrderInput, UpdateOrderStatusInput } from './sales.validator';
+
+// Allowed order status transitions
+const ORDER_TRANSITIONS: Record<CustomerOrderStatus, CustomerOrderStatus[]> = {
+  CONFIRMED: [CustomerOrderStatus.IN_PRODUCTION, CustomerOrderStatus.CANCELLED],
+  IN_PRODUCTION: [CustomerOrderStatus.READY_TO_DISPATCH, CustomerOrderStatus.CANCELLED],
+  READY_TO_DISPATCH: [CustomerOrderStatus.DISPATCHED, CustomerOrderStatus.CANCELLED],
+  DISPATCHED: [CustomerOrderStatus.DELIVERED],
+  DELIVERED: [],
+  CANCELLED: [],
+};
 
 export class SalesService {
   // =========================================================================
@@ -350,6 +360,124 @@ export class SalesService {
     ]);
 
     return { orders, total };
+  }
+
+  // =========================================================================
+  // ORDER STATUS MANAGEMENT
+  // =========================================================================
+
+  async updateOrderStatus(input: UpdateOrderStatusInput, userId: string) {
+    const order = await prisma.customerOrder.findUnique({
+      where: { id: input.id },
+    });
+
+    if (!order) {
+      throw new NotFoundError('CustomerOrder', input.id);
+    }
+
+    const newStatus = input.status as CustomerOrderStatus;
+    const allowed = ORDER_TRANSITIONS[order.status];
+
+    if (!allowed.includes(newStatus)) {
+      throw new AppError(
+        `Cannot transition order from '${order.status}' to '${newStatus}'. Allowed: ${allowed.join(', ') || 'none'}`,
+        422,
+      );
+    }
+
+    // Handle cancellation — release consumed inventory
+    if (newStatus === CustomerOrderStatus.CANCELLED) {
+      await this.releaseOrderInventory(order.id, order.orderNo, userId);
+    }
+
+    const updated = await prisma.customerOrder.update({
+      where: { id: input.id },
+      data: {
+        status: newStatus,
+        remarks: input.remarks ?? order.remarks,
+      },
+      include: {
+        quotation: { select: { id: true, quotationNo: true } },
+        createdBy: { select: { id: true, fullName: true } },
+      },
+    });
+
+    await writeAuditLog({
+      actorId: userId,
+      action: 'UPDATE_ORDER_STATUS',
+      entityType: 'CustomerOrder',
+      entityId: order.id,
+      metadata: { orderNo: order.orderNo, fromStatus: order.status, toStatus: newStatus },
+    });
+
+    return updated;
+  }
+
+  /**
+   * Release inventory that was consumed when the order was confirmed.
+   * Finds all ISSUE transactions referencing this order and reverses them.
+   */
+  private async releaseOrderInventory(orderId: string, orderNo: string, userId: string) {
+    const issueTransactions = await prisma.inventoryTransaction.findMany({
+      where: {
+        referenceType: 'CustomerOrder',
+        referenceId: orderId,
+        type: 'ISSUE',
+      },
+      include: {
+        inventory: true,
+      },
+    });
+
+    for (const tx of issueTransactions) {
+      const releaseQty = Math.abs(tx.quantity); // ISSUE quantities are negative
+      const inv = tx.inventory;
+
+      await prisma.inventory.update({
+        where: { id: inv.id },
+        data: {
+          quantity: inv.quantity + releaseQty,
+          availableQty: inv.availableQty + releaseQty,
+        },
+      });
+
+      await prisma.inventoryTransaction.create({
+        data: {
+          inventoryId: inv.id,
+          type: 'RELEASE',
+          quantity: releaseQty,
+          previousQty: inv.quantity,
+          newQty: inv.quantity + releaseQty,
+          referenceType: 'CustomerOrder',
+          referenceId: orderId,
+          remarks: `Released — order ${orderNo} cancelled`,
+          performedById: userId,
+        },
+      });
+    }
+  }
+
+  // =========================================================================
+  // ORDER DETAIL
+  // =========================================================================
+
+  async getOrderById(id: string) {
+    const order = await prisma.customerOrder.findUnique({
+      where: { id },
+      include: {
+        quotation: { select: { id: true, quotationNo: true } },
+        createdBy: { select: { id: true, fullName: true } },
+        productionOrders: {
+          select: { id: true, orderNo: true, status: true, createdAt: true },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundError('CustomerOrder', id);
+    }
+
+    return order;
   }
 }
 

@@ -66,6 +66,24 @@ export class SalesController {
       next(err);
     }
   }
+
+  async updateOrderStatus(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const order = await salesService.updateOrderStatus(req.body, req.user!.userId);
+      sendSuccess(res, order, 'Order status updated successfully');
+    } catch (err) {
+      next(err);
+    }
+  }
+
+  async getOrderById(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+    try {
+      const order = await salesService.getOrderById(req.params.id as string);
+      sendSuccess(res, order);
+    } catch (err) {
+      next(err);
+    }
+  }
 }
 
 export const salesController = new SalesController();

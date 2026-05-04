@@ -3,7 +3,7 @@ import { salesController } from './sales.controller';
 import { authenticate } from '../../middleware/auth';
 import { authorize } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { customerEnquirySchema, generateQuotationSchema, confirmOrderSchema } from './sales.validator';
+import { customerEnquirySchema, generateQuotationSchema, confirmOrderSchema, updateOrderStatusSchema } from './sales.validator';
 import { UserRole } from '@prisma/client';
 
 const router = Router();
@@ -45,11 +45,27 @@ router.post(
   (req, res, next) => salesController.confirmOrder(req, res, next),
 );
 
-// Order list
+// Order status update
+router.put(
+  '/order/update-status',
+  authorize(UserRole.ADMINISTRATOR, UserRole.SALES_HANDLER, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANUFACTURING_WORKER),
+  validate({ body: updateOrderStatusSchema }),
+  (req, res, next) => salesController.updateOrderStatus(req, res, next),
+);
+
+// Order list (must be before :id route)
 router.get(
   '/order/list',
-  authorize(UserRole.ADMINISTRATOR, UserRole.SALES_HANDLER, UserRole.MANAGEMENT),
+  authorize(UserRole.ADMINISTRATOR, UserRole.SALES_HANDLER, UserRole.MANAGEMENT, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANUFACTURING_WORKER),
   (req, res, next) => salesController.listOrders(req, res, next),
 );
 
+// Order detail
+router.get(
+  '/order/:id',
+  authorize(UserRole.ADMINISTRATOR, UserRole.SALES_HANDLER, UserRole.MANAGEMENT, UserRole.MANUFACTURING_SUPERVISOR, UserRole.MANUFACTURING_WORKER),
+  (req, res, next) => salesController.getOrderById(req, res, next),
+);
+
 export default router;
+
