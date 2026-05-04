@@ -2,7 +2,9 @@ import dotenv from 'dotenv';
 import path from 'path';
 
 // Load .env from backend root
-dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+if (process.env.NODE_ENV !== 'production') {
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+}
 
 export const config = {
   env: process.env.NODE_ENV || 'development',
