@@ -23,7 +23,7 @@ export class MaterialsService {
   // =========================================================================
 
   async recordReceipt(input: MaterialReceiptInput, userId: string) {
-    return prisma.$transaction(async (tx) => {
+    const receipt = await prisma.$transaction(async (tx) => {
       // Validate PO exists and is in a receivable state
       const po = await tx.purchaseOrder.findUnique({
         where: { id: input.purchaseOrderId },
@@ -78,7 +78,7 @@ export class MaterialsService {
       }
 
       // Create receipt
-      const receipt = await tx.materialReceipt.create({
+      const result = await tx.materialReceipt.create({
         data: {
           receiptNo,
           purchaseOrderId: po.id,
@@ -125,16 +125,19 @@ export class MaterialsService {
         }
       }
 
-      await writeAuditLog({
-        actorId: userId,
-        action: 'RECORD_RECEIPT',
-        entityType: 'MaterialReceipt',
-        entityId: receipt.id,
-        metadata: { receiptNo, poNumber: po.poNumber, itemCount: input.items.length },
-      });
+      return { result, receiptNo, poNumber: po.poNumber };
+    }, { timeout: 15000 });
 
-      return receipt;
+    // Audit log OUTSIDE the transaction to avoid connection pool deadlock
+    await writeAuditLog({
+      actorId: userId,
+      action: 'RECORD_RECEIPT',
+      entityType: 'MaterialReceipt',
+      entityId: receipt.result.id,
+      metadata: { receiptNo: receipt.receiptNo, poNumber: receipt.poNumber, itemCount: input.items.length },
     });
+
+    return receipt.result;
   }
 
   // =========================================================================
@@ -142,7 +145,7 @@ export class MaterialsService {
   // =========================================================================
 
   async recordInspection(input: MaterialInspectionInput, userId: string) {
-    return prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx) => {
       const batch = await tx.materialBatch.findUnique({
         where: { id: input.batchId },
         include: { material: true },
@@ -273,22 +276,25 @@ export class MaterialsService {
         });
       }
 
-      await writeAuditLog({
-        actorId: userId,
-        action: 'RECORD_INSPECTION',
-        entityType: 'MaterialInspection',
-        entityId: inspection.id,
-        metadata: {
-          inspectionNo,
-          batchNumber: batch.batchNumber,
-          result: input.result,
-          acceptedQty: input.acceptedQty,
-          rejectedQty: input.rejectedQty,
-        },
-      });
+      return { inspection, inspectionNo, batchNumber: batch.batchNumber };
+    }, { timeout: 15000 });
 
-      return inspection;
+    // Audit log OUTSIDE the transaction to avoid connection pool deadlock
+    await writeAuditLog({
+      actorId: userId,
+      action: 'RECORD_INSPECTION',
+      entityType: 'MaterialInspection',
+      entityId: result.inspection.id,
+      metadata: {
+        inspectionNo: result.inspectionNo,
+        batchNumber: result.batchNumber,
+        result: input.result,
+        acceptedQty: input.acceptedQty,
+        rejectedQty: input.rejectedQty,
+      },
     });
+
+    return result.inspection;
   }
 
   // =========================================================================
@@ -366,7 +372,7 @@ export class MaterialsService {
   }
 
   async updateLocation(input: UpdateLocationInput, userId: string) {
-    return prisma.$transaction(async (tx) => {
+    const txResult = await prisma.$transaction(async (tx) => {
       const inventory = await tx.inventory.findUnique({
         where: { id: input.inventoryId },
         include: { material: true, location: true },
@@ -474,21 +480,34 @@ export class MaterialsService {
         destId = newDest.id;
       }
 
-      await writeAuditLog({
-        actorId: userId,
-        action: 'UPDATE_INVENTORY_LOCATION',
-        entityType: 'Inventory',
-        entityId: inventory.id,
-        metadata: {
+      return {
+        sourceInventoryId: inventory.id,
+        destinationInventoryId: destId,
+        movedQuantity: input.quantity,
+        _audit: {
+          inventoryId: inventory.id,
           materialName: inventory.material.name,
           fromLocation: inventory.location.name,
           toLocation: newLocation.name,
-          quantity: input.quantity,
         },
-      });
+      };
+    }, { timeout: 15000 });
 
-      return { sourceInventoryId: inventory.id, destinationInventoryId: destId, movedQuantity: input.quantity };
+    // Audit log OUTSIDE the transaction to avoid connection pool deadlock
+    await writeAuditLog({
+      actorId: userId,
+      action: 'UPDATE_INVENTORY_LOCATION',
+      entityType: 'Inventory',
+      entityId: txResult._audit.inventoryId,
+      metadata: {
+        materialName: txResult._audit.materialName,
+        fromLocation: txResult._audit.fromLocation,
+        toLocation: txResult._audit.toLocation,
+        quantity: input.quantity,
+      },
     });
+
+    return { sourceInventoryId: txResult.sourceInventoryId, destinationInventoryId: txResult.destinationInventoryId, movedQuantity: txResult.movedQuantity };
   }
 
   // =========================================================================
