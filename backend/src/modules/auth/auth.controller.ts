@@ -17,7 +17,7 @@ export class AuthController {
       res.cookie('smop_token', token, {
         httpOnly: true,
         secure: config.env === 'production',
-        sameSite: config.env === 'production' ? 'strict' : 'lax',
+        sameSite: config.env === 'production' ? 'none' : 'lax',
         maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
         path: '/',
       });
@@ -47,7 +47,7 @@ export class AuthController {
       res.clearCookie('smop_token', {
         httpOnly: true,
         secure: config.env === 'production',
-        sameSite: config.env === 'production' ? 'strict' : 'lax',
+        sameSite: config.env === 'production' ? 'none' : 'lax',
         path: '/',
       });
 
