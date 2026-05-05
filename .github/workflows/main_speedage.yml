@@ -26,6 +26,7 @@ jobs:
           cd backend
           npm install
           npx prisma generate
+          npm run build
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
