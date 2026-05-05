@@ -39,14 +39,14 @@ export class MaterialsService {
         throw new AppError(`Cannot receive materials for PO in '${po.status}' status`);
       }
 
-      const receiptNo = await generateSequenceNumber('REC', 'materialReceipt');
+      const receiptNo = await generateSequenceNumber('REC', 'materialReceipt', tx);
 
       // Create batches and receipt items
       const receiptItemsData: { batchId: string; quantity: number; remarks?: string }[] = [];
 
       for (const item of input.items) {
         // Create or reuse batch
-        const batchNumber = item.batchNumber || await generateSequenceNumber('BATCH', 'materialBatch');
+        const batchNumber = item.batchNumber || await generateSequenceNumber('BATCH', 'materialBatch', tx);
 
         const batch = await tx.materialBatch.create({
           data: {
@@ -156,7 +156,7 @@ export class MaterialsService {
         throw new AppError('Accepted + rejected quantity cannot exceed inspected quantity');
       }
 
-      const inspectionNo = await generateSequenceNumber('INS', 'materialInspection');
+      const inspectionNo = await generateSequenceNumber('INS', 'materialInspection', tx);
 
       // Create inspection record
       const inspection = await tx.materialInspection.create({
