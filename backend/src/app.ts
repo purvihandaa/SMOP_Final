@@ -24,7 +24,7 @@ const app = express();
 
 // CORS — allow frontend origin with credentials
 app.use(cors({
-  origin: config.cors.origin,
+  origin: "https://speedageengineers.in",
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
