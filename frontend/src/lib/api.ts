@@ -2,7 +2,9 @@
 // SMOP API Client — Central fetch wrapper + namespaced service functions
 // =============================================================================
 
-const API_BASE = '/api';
+const API_BASE = import.meta.env.VITE_API_URL
+  ? `${import.meta.env.VITE_API_URL}/api`
+  : '/api';
 
 // -----------------------------------------------------------------------------
 // Core fetch wrapper
