@@ -11,10 +11,8 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ): void {
-  // Log error in development
-  if (process.env.NODE_ENV === 'development') {
-    console.error('[ErrorHandler]', err);
-  }
+  // Always log errors so they appear in Azure App Service logs
+  console.error('[ErrorHandler]', err.message, err.stack);
 
   if (err instanceof AppError) {
     res.status(err.statusCode).json({
